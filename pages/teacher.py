@@ -80,3 +80,90 @@ else:
 
     # 각 문항별 O/X 카운트 집계
     q1_results = df['feedback_1'].apply(get_result).value_counts()
+    q2_results = df['feedback_2'].apply(get_result).value_counts()
+    q3_results = df['feedback_3'].apply(get_result).value_counts()
+
+    # 차트 그리기 (3단 컬럼)
+    c1, c2, c3 = st.columns(3)
+    
+    def plot_ox_chart(results, title):
+        if results.empty: return None
+        fig = px.pie(
+            values=results.values, 
+            names=results.index, 
+            title=title,
+            color=results.index,
+            color_discrete_map={"정답 (O)": "#4CAF50", "오답 (X)": "#FF5252", "기타": "#9E9E9E"},
+            hole=0.4
+        )
+        fig.update_layout(height=300, margin=dict(t=30, b=0, l=0, r=0))
+        return fig
+
+    with c1: st.plotly_chart(plot_ox_chart(q1_results, "Q1. 기체와 온도"), use_container_width=True)
+    with c2: st.plotly_chart(plot_ox_chart(q2_results, "Q2. 보일 법칙"), use_container_width=True)
+    with c3: st.plotly_chart(plot_ox_chart(q3_results, "Q3. 열의 이동"), use_container_width=True)
+
+    st.divider()
+
+    # --- (3) 상세 데이터 테이블 ---
+    st.subheader("📝 학생별 상세 제출 내역")
+    
+    # 보기 좋은 컬럼 순서 및 이름 변경
+    display_df = df[['student_id', 'submit_time', 'answer_1', 'feedback_1', 'answer_2', 'feedback_2', 'answer_3', 'feedback_3']].copy()
+    display_df.columns = ['학번', '제출시간', 'Q1 답안', 'Q1 피드백', 'Q2 답안', 'Q2 피드백', 'Q3 답안', 'Q3 피드백']
+
+    # 학번 검색 기능
+    search_id = st.text_input("🔍 학번 검색", placeholder="예: 10130")
+    if search_id:
+        display_df = display_df[display_df['학번'].str.contains(search_id)]
+
+    st.dataframe(
+        display_df, 
+        use_container_width=True,
+        hide_index=True,
+        height=400
+    )
+
+    # --- (4) 개별 학생 심층 피드백 보기 (Expandable) ---
+    st.divider()
+    st.subheader("🔍 개별 학생 심층 검토")
+    
+    # 학생 선택 Selectbox
+    student_list = df['student_id'].unique()
+    selected_student = st.selectbox("학생을 선택하세요", student_list)
+    
+    if selected_student:
+        # 선택된 학생의 가장 최신 데이터 가져오기
+        student_data = df[df['student_id'] == selected_student].iloc[0]
+        
+        with st.container(border=True):
+            st.markdown(f"### 🧑‍🎓 학번: {student_data['student_id']} (제출: {student_data['submit_time']})")
+            
+            t1, t2, t3 = st.tabs(["문제 1 (온도)", "문제 2 (보일)", "문제 3 (열이동)"])
+            
+            with t1:
+                st.markdown("**학생 답안:**")
+                st.info(student_data['answer_1'])
+                st.markdown("**AI 피드백:**")
+                if str(student_data['feedback_1']).startswith("O"):
+                    st.success(student_data['feedback_1'])
+                else:
+                    st.error(student_data['feedback_1'])
+            
+            with t2:
+                st.markdown("**학생 답안:**")
+                st.info(student_data['answer_2'])
+                st.markdown("**AI 피드백:**")
+                if str(student_data['feedback_2']).startswith("O"):
+                    st.success(student_data['feedback_2'])
+                else:
+                    st.error(student_data['feedback_2'])
+            
+            with t3:
+                st.markdown("**학생 답안:**")
+                st.info(student_data['answer_3'])
+                st.markdown("**AI 피드백:**")
+                if str(student_data['feedback_3']).startswith("O"):
+                    st.success(student_data['feedback_3'])
+                else:
+                    st.error(student_data['feedback_3'])
